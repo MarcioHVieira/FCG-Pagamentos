@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pagamentos-api
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: pagamentos-api
+  template:
+    metadata:
+      labels:
+        app: pagamentos-api
+    spec:
+      containers:
+        - name: pagamentos-api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+          env:
+            - name: DOTNET_ENVIRONMENT
+              value: "{{ .Values.env.DOTNET_ENVIRONMENT }}"
+
+            # Dados sensíveis via Secret
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: pagamentos-api-secrets
+                  key: ConnectionStrings__DefaultConnection
+            - name: JwtSettings__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: pagamentos-api-secrets
+                  key: JwtSettings__SecretKey
+            - name: EmailSettings__SmtpPassword
+              valueFrom:
+                secretKeyRef:
+                  name: pagamentos-api-secrets
+                  key: EmailSettings__SmtpPassword
+            - name: ApplicationInsights__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: pagamentos-api-secrets
+                  key: ApplicationInsights__ConnectionString
+            - name: RabbitMQ__Password
+              valueFrom:
+                secretKeyRef:
+                  name: pagamentos-api-secrets
+                  key: RabbitMQ__Password
+            - name: ServiceBus__ConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: pagamentos-api-secrets
+                  key: ServiceBus__ConnectionString
+
+            # Valores públicos via Helm
+            - name: Logging__LogLevel__Default
+              value: "{{ .Values.Logging.LogLevel.Default }}"
+            - name: Logging__LogLevel__Microsoft
+              value: "{{ .Values.Logging.LogLevel.Microsoft }}"
+            - name: Logging__LogLevel__Microsoft.Hosting.Lifetime
+              value: "{{ index .Values.Logging.LogLevel "Microsoft.Hosting.Lifetime" }}"
+            - name: Logging__LogLevel__Microsoft.ApplicationInsights
+              value: "{{ index .Values.Logging.LogLevel "Microsoft.ApplicationInsights" }}"
+
+            - name: JwtSettings__Issuer
+              value: "{{ .Values.JwtSettings.Issuer }}"
+            - name: JwtSettings__Audience
+              value: "{{ .Values.JwtSettings.Audience }}"
+            - name: JwtSettings__ExpirationMinutes
+              value: "{{ .Values.JwtSettings.ExpirationMinutes }}"
+
+            - name: EmailSettings__SmtpServer
+              value: "{{ .Values.EmailSettings.SmtpServer }}"
+            - name: EmailSettings__SmtpPort
+              value: "{{ .Values.EmailSettings.SmtpPort }}"
+            - name: EmailSettings__SmtpUser
+              value: "{{ .Values.EmailSettings.SmtpUser }}"
+
+            - name: ApplicationInsights__EnableDebugLogger
+              value: "{{ .Values.ApplicationInsights.EnableDebugLogger }}"
+            - name: ApplicationInsights__EnableAdaptiveSampling
+              value: "{{ .Values.ApplicationInsights.EnableAdaptiveSampling }}"
+
+            - name: Messaging__Provider
+              value: "{{ .Values.Messaging.Provider }}"
+
+            - name: RabbitMQ__HostName
+              value: "{{ .Values.RabbitMQ.HostName }}"
+            - name: RabbitMQ__UserName
+              value: "{{ .Values.RabbitMQ.UserName }}"
+            - name: RabbitMQ__ConnectionName
+              value: "{{ .Values.RabbitMQ.ConnectionName }}"
+            - name: RabbitMQ__Queues__FilaJogo
+              value: "{{ .Values.RabbitMQ.Queues.FilaJogo }}"
+            - name: RabbitMQ__Queues__FilaManual
+              value: "{{ .Values.RabbitMQ.Queues.FilaManual }}"
+            - name: RabbitMQ__Queues__FilaCredito
+              value: "{{ .Values.RabbitMQ.Queues.FilaCredito }}"
+
+            - name: ServiceBus__Queues__FilaJogo
+              value: "{{ .Values.ServiceBus.Queues.FilaJogo }}"
+            - name: ServiceBus__Queues__FilaManual
+              value: "{{ .Values.ServiceBus.Queues.FilaManual }}"
+            - name: ServiceBus__Queues__FilaCredito
+              value: "{{ .Values.ServiceBus.Queues.FilaCredito }}"
+
+          resources:
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}

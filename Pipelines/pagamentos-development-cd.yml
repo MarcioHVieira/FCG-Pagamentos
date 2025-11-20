@@ -1,0 +1,105 @@
+trigger: none
+
+parameters:
+  - name: imageTag
+    type: string
+    default: 'Pagamentos-Development-latest'
+
+variables:
+  - group: Pagamentos
+
+jobs:
+- job: DeployPagamentosDevelopment
+  displayName: Deploy para Desenvolvimento
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+    - task: AzureCLI@2
+      displayName: Deploy da Pagamentos.Api no Azure Container Instances
+      inputs:
+        azureSubscription: 'fcgrm-connection'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          echo "Iniciando deploy do pagamentos-development no ACI..."
+
+          az container delete \
+            --resource-group FCG-RG \
+            --name pagamentos-development \
+            --yes
+
+            az container create \
+              --resource-group fcg \
+              --name pagamentos-development \
+              --image fcgacr.azurecr.io/fcgapi:${{ parameters.imageTag }} \
+              --dns-name-label pagamentos-development \
+              --ports 80 \
+              --location eastus \
+              --os-type Linux \
+              --cpu 1 \
+              --memory 1.5 \
+              --registry-login-server fcgacr.azurecr.io \
+              --registry-username "${ACR_USERNAME}" \
+              --registry-password "${ACR_PASSWORD}" \
+              --environment-variables \
+                  DOTNET_ENVIRONMENT=Development \
+                  ConnectionStrings__DefaultConnection="${CONN_STR}" \
+                  Logging__LogLevel__Default="${LOG_DEFAULT}" \
+                  Logging__LogLevel__Microsoft="${LOG_MICROSOFT}" \
+                  Logging__LogLevel__Microsoft__Hosting__Lifetime="${LOG_MICROSOFT_LIFETIME}" \
+                  Logging__LogLevel__Microsoft__ApplicationInsights="${LOG_MICROSOFT_AI}" \
+                  JwtSettings__SecretKey="${JWT_SECRET}" \
+                  JwtSettings__Issuer="${JWT_ISSUER}" \
+                  JwtSettings__Audience="${JWT_AUDIENCE}" \
+                  JwtSettings__ExpirationMinutes="${JWT_EXPIRATION}" \
+                  EmailSettings__SmtpServer="${SMTP_SERVER}" \
+                  EmailSettings__SmtpPort="${SMTP_PORT}" \
+                  EmailSettings__SmtpUser="${SMTP_USER}" \
+                  EmailSettings__SmtpPassword="${SMTP_PASS}" \
+                  ApplicationInsights__ConnectionString="${APPINSIGHTS_CONN}" \
+                  ApplicationInsights__EnableDebugLogger="${APPINSIGHTS_DEBUG}" \
+                  ApplicationInsights__EnableAdaptiveSampling="${APPINSIGHTS_SAMPLING}" \
+                  Messaging__Provider="${MESSAGING_PROVIDER}" \
+                  RabbitMQ__HostName="${RABBITMQ_HOST}" \
+                  RabbitMQ__UserName="${RABBITMQ_USER}" \
+                  RabbitMQ__Password="${RABBITMQ_PASS}" \
+                  RabbitMQ__ConnectionName="${RABBITMQ_CONN_NAME}" \
+                  RabbitMQ__Queues__PagamentoRealizadoEvent="${RABBITMQ_QUEUE_PAGAMENTO}" \
+                  ServiceBus__ConnectionString="${SERVICEBUS_CONN}" \
+                  ServiceBus__Queues__PagamentoRealizadoEvent="${SERVICEBUS_QUEUE_PAGAMENTO}"
+            --output json
+
+          echo "Verificando se o container foi criado..."
+          az container show \
+            --resource-group FCG-RG \
+            --name pagamentos-development \
+            --query "{name:name, state:instanceView.state}" \
+            --output json
+      env:
+          ACR_USERNAME: $(acrUsername)
+          ACR_PASSWORD: $(acrPassword)
+          CONN_STR: $(ConnectionStrings__DefaultConnection)
+          LOG_DEFAULT: $(Logging__LogLevel__Default)
+          LOG_MICROSOFT: $(Logging__LogLevel__Microsoft)
+          LOG_MICROSOFT_LIFETIME: $(Logging__LogLevel__Microsoft.Hosting.Lifetime)
+          LOG_MICROSOFT_AI: $(Logging__LogLevel__Microsoft.ApplicationInsights)
+          JWT_SECRET: $(JwtSettings__SecretKey)
+          JWT_ISSUER: $(JwtSettings__Issuer)
+          JWT_AUDIENCE: $(JwtSettings__Audience)
+          JWT_EXPIRATION: $(JwtSettings__ExpirationMinutes)
+          SMTP_SERVER: $(EmailSettings__SmtpServer)
+          SMTP_PORT: $(EmailSettings__SmtpPort)
+          SMTP_USER: $(EmailSettings__SmtpUser)
+          SMTP_PASS: $(EmailSettings__SmtpPassword)
+          APPINSIGHTS_CONN: $(ApplicationInsights__ConnectionString)
+          APPINSIGHTS_DEBUG: $(ApplicationInsights__EnableDebugLogger)
+          APPINSIGHTS_SAMPLING: $(ApplicationInsights__EnableAdaptiveSampling)
+          MESSAGING_PROVIDER: $(Messaging__Provider)
+          RABBITMQ_HOST: $(RabbitMQ__HostName)
+          RABBITMQ_USER: $(RabbitMQ__UserName)
+          RABBITMQ_PASS: $(RabbitMQ__Password)
+          RABBITMQ_CONN_NAME: $(RabbitMQ__ConnectionName)
+          RABBITMQ_QUEUE_PAGAMENTO: $(RabbitMQ__Queues__PagamentoRealizadoEvent)
+          SERVICEBUS_CONN: $(ServiceBus__ConnectionString)
+          SERVICEBUS_QUEUE_PAGAMENTO: $(ServiceBus__Queues__PagamentoRealizadoEvent)

@@ -1,0 +1,42 @@
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  helmChartPath: helm/pagamentos-api
+  helmReleaseName: pagamentos-api
+  helmNamespace: pagamentos
+  aksResourceGroup: FCG-RG
+  aksClusterName: fcg-aks
+  imageTag: Pagamentos-Production-latest
+
+stages:
+  - stage: Deploy
+    displayName: Deploy para AKS
+    jobs:
+      - job: HelmDeploy
+        displayName: Aplicar Helm no AKS
+        condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+
+          - task: AzureCLI@2
+            displayName: 'Login no Azure e conectar ao AKS'
+            inputs:
+              azureSubscription: 'fcgrm-connection'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az aks get-credentials \
+                  --resource-group $(aksResourceGroup) \
+                  --name $(aksClusterName) \
+                  --overwrite-existing
+
+          - script: |
+              helm upgrade --install $(helmReleaseName) ./$(helmChartPath) \
+                --namespace $(helmNamespace) \
+                --create-namespace \
+                -f $(helmChartPath)/values.yaml
+            displayName: 'Deploy com Helm'

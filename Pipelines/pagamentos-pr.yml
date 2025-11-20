@@ -1,0 +1,53 @@
+name: ValidacaoPR-$(Build.BuildId)
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - develop
+      - main
+      - release/*
+      - feature/*
+
+variables:
+  vmImageName: 'ubuntu-latest'
+  hadolintVersion: 'v2.12.0'
+  dockerfilePath: '$(Build.SourcesDirectory)/Pagamentos.Api/Dockerfile'
+
+stages:
+- stage: ValidacaoPR
+  displayName: Verificações de Qualidade no Pull Request
+  jobs:
+
+    - job: TestesUnitarios
+      displayName: Executar Testes de Unidade (.NET)
+      pool:
+        vmImage: $(vmImageName)
+      steps:
+        - checkout: self
+          displayName: Fazer checkout do código
+
+        - task: DotNetCoreCLI@2
+          displayName: Rodar testes com .NET
+          inputs:
+            command: test
+            projects: '**/*Tests.csproj'
+
+    - job: VerificacaoDockerfile
+      displayName: Verificar Qualidade do Dockerfile (Hadolint)
+      dependsOn: TestesUnitarios
+      pool:
+        vmImage: $(vmImageName)
+      steps:
+        - checkout: self
+          displayName: Fazer checkout do código
+
+        - script: |
+            echo "Executando lint no Dockerfile..."
+            echo "Usando hadolint versão $(hadolintVersion)..."
+
+            curl -sSL https://github.com/hadolint/hadolint/releases/download/$(hadolintVersion)/hadolint-Linux-x86_64 -o hadolint
+            chmod +x hadolint
+            ./hadolint $(dockerfilePath)
+          displayName: Validar Dockerfile com Hadolint
