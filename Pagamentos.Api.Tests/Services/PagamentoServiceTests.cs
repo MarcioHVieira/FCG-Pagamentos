@@ -1,5 +1,6 @@
 ﻿using Fcg.Common.Enums;
 using Fcg.Common.Messaging.Abstractions;
+using Fcg.Common.Messaging.RabbitMQ;
 using Fcg.Common.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,14 +27,14 @@ namespace Pagamentos.Api.Tests.Services
             _eventPublisherMock = new Mock<IEventPublisher>();
             _loggerMock = new Mock<ILogger<PagamentoService>>();
 
-            var settings = new ServiceBusSettings
+            var settings = new RabbitMqSettings
             {
                 Queues = new Dictionary<string, string>
                 {
                     { "FilaJogo", "pagamento-jogo-realizado" }
                 }
             };
-            var optionsMock = new Mock<IOptions<ServiceBusSettings>>();
+            var optionsMock = new Mock<IOptions<RabbitMqSettings>>();
             optionsMock.Setup(o => o.Value).Returns(settings);
 
             _service = new PagamentoService(
