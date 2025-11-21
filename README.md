@@ -168,5 +168,50 @@ dotnet test --filter Category=Integration
 dotnet test --filter Category=BDD
 ```
 
+## ⚙️ Arquitetura de Deploy e Execução em AKS
+
+A imagem abaixo representa o fluxo completo de deploy e execução da aplicação containerizada utilizando Azure Kubernetes Service (AKS) como plataforma de orquestração:
+
+[![Fluxo-Kubernetes.png](https://i.postimg.cc/V60vNNNd/Fluxo-Kubernetes.png)](https://postimg.cc/phxRGRzH)
+
+### 🔄 Fluxo de Deploy e Operação
+#### 1-Versionamento e Trigger de Pipeline 
+O código-fonte é mantido no GitHub, e qualquer alteração aciona o Azure Pipeline, que executa as etapas de CI/CD definidas nos arquivos yml de pipelines.
+#### 2-Build e Publicação de Imagem
+O pipeline realiza o build da aplicação, gera a imagem Docker e publica no Azure Container Registry (ACR). A imagem é versionada com tags baseadas em versão semântica, sendo que imagem mais recente também possui o sufixo "latest".
+#### 3-Deploy no AKS via Manifestos Kubernetes
+Após o build, o pipeline aplica os manifestos Kubernetes (Deployment, Service, Secret, etc.) no cluster AKS. O deploy é feito no namespace correspondente ao ambiente produtivo.
+#### 4-Execução no Cluster
+- O Pod é agendado em um Node do cluster.
+- O Container é instanciado a partir da imagem armazenada no ACR.
+- Os Secrets são injetados como variáveis de ambiente.
+- O Service expõe o Pod externamente.
+#### 5-Integração com Serviços Externos
+A aplicação se comunica com:
+- Base de Dados Microsoft SQL Server para persistência de dados.
+- RabbitMQ para troca de mensagens assíncronas entre microsserviços.
+- Application Insights para telemetria, rastreamento de requisições e análise de performance.
+#### 6-Acesso do Usuário Final
+O usuário acessa a aplicação via IP público exposto pelo serviço no AKS. O tráfego é roteado para o Pod ativo, que processa a requisição e interage com os serviços externos conforme necessário.
+
+## 📡 Fluxo de Comunicação Assíncrona com RabbitMQ
+A arquitetura utiliza RabbitMQ como broker de mensagens para garantir comunicação assíncrona entre os microsserviços. Esse modelo desacopla produtores e consumidores, permitindo que cada serviço processe eventos no seu próprio ritmo e garantindo escalabilidade horizontal com Kubernetes.
+
+[![Fluxo-Rabbit-MQ.png](https://i.postimg.cc/13MLjhQF/Fluxo-Rabbit-MQ.png)](https://postimg.cc/4Y7LY0n4)
+
+### 🔄 Exemplo Real: Confirmação do pagamentos para baixa do pedido
+#### 1-Microserviço Pagamentos
+- Após a confirmação do pagamento de um jogo, o serviço publica uma mensagem na fila pagamento-jogo-realizado.
+- Essa mensagem contém os dados essenciais da transação.
+
+#### 2-RabbitMQ (Broker)
+- Armazena a mensagem na fila até que algum consumidor esteja disponível.
+- Garante entrega confiável, podendo aplicar estratégias de retry e dead-letter queue em caso de falhas.
+
+#### 3-Microserviço Pedidos
+- Está inscrito como consumidor da fila pagamento-jogo-realizado.
+- Ao receber a mensagem, atualiza o status do pedido correspondente para “pago”, garantindo consistência no fluxo de negócio.
+- Esse processamento é assíncrono: o usuário não precisa esperar a atualização do pedido para concluir o pagamento.
+
 ## ✒️ Autor
 *Márcio Henrique Vieira dos Santos - ✉️ marciohenriquev@gmail.com*# FCG
