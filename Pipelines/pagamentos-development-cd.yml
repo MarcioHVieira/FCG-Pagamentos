@@ -39,7 +39,7 @@ jobs:
             --os-type Linux \
             --cpu 1 \
             --memory 1.5 \
-            --registry-login-server fcgacr.azurecr.io \
+            --registry-login-server fcgcr.azurecr.io \
             --registry-username "${ACR_USERNAME}" \
             --registry-password "${ACR_PASSWORD}" \
             --environment-variables \
